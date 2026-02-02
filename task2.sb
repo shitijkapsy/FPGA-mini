@@ -1,0 +1,40 @@
+module gpio(
+    input  wire        clk,
+    input  wire        reset,
+    input  wire        we,
+    input  wire        re,
+    input  wire [31:0] data_in,
+
+    output reg  [31:0] data_out,
+    output reg  [31:0] gpio_out
+);
+
+    reg [31:0] data1_reg;
+
+ // Write logic
+    always @(posedge clk) begin
+        if (reset) begin
+            data1_reg <= 32'h0000_0000;
+        end
+        else if (we) begin
+            data1_reg <= data_in;
+        end
+    end
+
+/// Read / output logic
+    always @(posedge clk) begin
+        if (reset) begin
+            data_out <= 32'h0000_0000;
+            gpio_out <= 32'h0000_0000;
+        end
+        else if (re) begin
+            data_out <= data1_reg;
+            gpio_out <= data1_reg;
+        end
+        else begin
+            data_out <= 32'h0000_0000;
+            gpio_out <= gpio_out; // hold last value
+        end
+        end
+        
+endmodule
