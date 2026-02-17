@@ -1,0 +1,90 @@
+module gpio_soc_tb;
+
+reg clk = 0;
+always #5 clk = ~clk;
+
+reg rst_n = 0;
+
+reg bus_wr, bus_rd;
+reg [5:0] addr;
+reg [31:0] wdata;
+wire [31:0] rdata;
+
+reg [31:0] gpio_in;
+wire [31:0] gpio_out;
+wire [31:0] gpio_oe;
+wire irq;
+
+//////////////////////////////////////////////////////
+// ✅ FIXED DUT NAME
+//////////////////////////////////////////////////////
+
+gpio_soc dut(
+    .clk(clk),
+    .rst_n(rst_n),
+    .bus_wr(bus_wr),
+    .bus_rd(bus_rd),
+    .bus_addr(addr),
+    .bus_wdata(wdata),
+    .bus_rdata(rdata),
+    .gpio_in(gpio_in),
+    .gpio_out(gpio_out),
+    .gpio_oe(gpio_oe),
+    .irq(irq)
+);
+
+//////////////////////////////////////////////////////
+// write task
+//////////////////////////////////////////////////////
+
+task write;
+input [5:0] a;
+input [31:0] d;
+begin
+    @(posedge clk);
+    bus_wr = 1;
+    addr   = a;
+    wdata  = d;
+
+    @(posedge clk);
+    bus_wr = 0;
+end
+endtask
+
+//////////////////////////////////////////////////////
+// stimulus
+//////////////////////////////////////////////////////
+
+initial begin
+
+    // ✅ initialize signals
+    bus_wr = 0;
+    bus_rd = 0;
+    addr   = 0;
+    wdata  = 0;
+    gpio_in = 0;
+
+    #20 rst_n = 1;
+
+    // configure output pin 0
+    write(6'h00, 32'h1);
+
+    // toggle LED
+    write(6'h0C, 32'h1);
+
+    // enable interrupt pin 1
+    write(6'h18, 32'h2);
+
+    // simulate rising edge
+    #20 gpio_in = 32'h2;
+
+    #40;
+
+    // clear interrupt
+    write(6'h1C, 32'h2);
+
+    #100 $finish;
+
+end
+
+endmodule
