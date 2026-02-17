@@ -1,0 +1,84 @@
+module gpio_ctrl (
+    input        clk,
+    input        rst,
+
+    // bus interface
+    input  [31:0] addr,
+    input  [31:0] wdata,
+    input         we,     
+    input         re,     
+    output reg [31:0] rdata,
+
+    // physical pins
+    inout  [7:0]  gpio_pins
+);
+
+    //  internal registers 
+    reg [7:0] data_reg;   
+    reg [7:0] dir_reg;    
+    reg [7:0] read_reg;   
+
+    // address decoding
+    wire sel_data;
+    wire sel_dir;
+    wire sel_read;
+
+    assign sel_data = (addr[3:0] == 4'h0);
+    assign sel_dir  = (addr[3:0] == 4'h4);
+    assign sel_read = (addr[3:0] == 4'h8);
+
+    // WRITE LOGIC 
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            data_reg <= 8'h00;
+            dir_reg  <= 8'h00;
+        end
+        else if (we) begin
+            if (sel_data)
+                data_reg <= wdata[7:0];
+
+            else if (sel_dir)
+                dir_reg <= wdata[7:0];
+        end
+    end
+
+    // GPIO TRI-STATE CONTROL 
+    
+    assign gpio_pins[0] = (dir_reg[0]) ? data_reg[0] : 1'bz;
+    assign gpio_pins[1] = (dir_reg[1]) ? data_reg[1] : 1'bz;
+    assign gpio_pins[2] = (dir_reg[2]) ? data_reg[2] : 1'bz;
+    assign gpio_pins[3] = (dir_reg[3]) ? data_reg[3] : 1'bz;
+    assign gpio_pins[4] = (dir_reg[4]) ? data_reg[4] : 1'bz;
+    assign gpio_pins[5] = (dir_reg[5]) ? data_reg[5] : 1'bz;
+    assign gpio_pins[6] = (dir_reg[6]) ? data_reg[6] : 1'bz;
+    assign gpio_pins[7] = (dir_reg[7]) ? data_reg[7] : 1'bz;
+
+    //READBACK LOGIC 
+    always @(*) begin
+        read_reg[0] = (dir_reg[0]) ? data_reg[0] : gpio_pins[0];
+        read_reg[1] = (dir_reg[1]) ? data_reg[1] : gpio_pins[1];
+        read_reg[2] = (dir_reg[2]) ? data_reg[2] : gpio_pins[2];
+        read_reg[3] = (dir_reg[3]) ? data_reg[3] : gpio_pins[3];
+        read_reg[4] = (dir_reg[4]) ? data_reg[4] : gpio_pins[4];
+        read_reg[5] = (dir_reg[5]) ? data_reg[5] : gpio_pins[5];
+        read_reg[6] = (dir_reg[6]) ? data_reg[6] : gpio_pins[6];
+        read_reg[7] = (dir_reg[7]) ? data_reg[7] : gpio_pins[7];
+    end
+
+    // READ OPERATION 
+    always @(*) begin
+        rdata = 32'h00000000;
+
+        if (re) begin
+            if (sel_data)
+                rdata = {24'h0, data_reg};
+
+            else if (sel_dir)
+                rdata = {24'h0, dir_reg};
+
+            else if (sel_read)
+                rdata = {24'h0, read_reg};
+        end
+    end
+
+endmodule
