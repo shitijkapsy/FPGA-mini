@@ -1,0 +1,85 @@
+
+module gpio_tb;
+
+reg clk;
+reg rst;
+reg [31:0] addr;
+reg [31:0] wdata;
+reg we;
+reg re;
+wire [31:0] rdata;
+
+wire [7:0] gpio_pins;
+reg [7:0] ext_input;
+
+// instantiate DUT
+gpio_ctrl uut (
+    .clk(clk),
+    .rst(rst),
+    .addr(addr),
+    .wdata(wdata),
+    .we(we),
+    .re(re),
+    .rdata(rdata),
+    .gpio_pins(gpio_pins)
+);
+
+// simulate external input driving pins when DIR=0
+assign gpio_pins = (uut.dir_reg == 8'h00) ? ext_input : 8'bz;
+
+// clock generation
+always #5 clk = ~clk;
+
+// tasks
+task write_reg;
+input [31:0] address;
+input [31:0] data;
+begin
+    @(posedge clk);
+    addr  = address;
+    wdata = data;
+    we    = 1;
+    re    = 0;
+    @(posedge clk);
+    we    = 0;
+end
+endtask
+
+task read_reg;
+input [31:0] address;
+begin
+    @(posedge clk);
+    addr = address;
+    re   = 1;
+    we   = 0;
+    @(posedge clk);
+    re   = 0;
+end
+endtask
+
+// simulation
+initial begin
+    $dumpfile("gpio.vcd");
+    $dumpvars(0, gpio_tb);
+
+    clk = 0;
+    rst = 1;
+    we  = 0;
+    re  = 0;
+    addr = 0;
+    wdata = 0;
+    ext_input = 8'b10101010;
+
+    #20 rst = 0;
+
+   
+    write_reg(32'h00000004, 32'hFF);
+    write_reg(32'h00000000, 32'hAA);
+    read_reg(32'h00000008);  
+    write_reg(32'h00000004, 32'h00);
+    read_reg(32'h00000008);
+
+    #50 $finish;
+end
+
+endmodule
